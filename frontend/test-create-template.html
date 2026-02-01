@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Criar Template</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #2563EB;
+        }
+        button.secondary {
+            background: #6B7280;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #D1FAE5;
+            border: 1px solid #10B981;
+            color: #065F46;
+        }
+        .error {
+            background: #FEE2E2;
+            border: 1px solid #EF4444;
+            color: #991B1B;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste - Criar Template</h1>
+    
+    <div class="form-group">
+        <label>Token (faça login primeiro):</label>
+        <input type="text" id="token" placeholder="Cole o token aqui ou clique em 'Obter Token'">
+        <button class="secondary" onclick="getToken()">Obter Token</button>
+    </div>
+    
+    <form id="createForm">
+        <div class="form-group">
+            <label for="name">Nome do Template:</label>
+            <input type="text" id="name" value="Template Teste" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="productType">Tipo de Produto:</label>
+            <select id="productType" required>
+                <option value="fotolivro">Fotolivro</option>
+                <option value="calendario">Calendário</option>
+                <option value="cartao">Cartão</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Descrição:</label>
+            <textarea id="description" rows="3">Template de teste criado via API</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="format">Formato:</label>
+            <select id="format">
+                <option value="quadrado">Quadrado</option>
+                <option value="retangular">Retangular</option>
+                <option value="paisagem">Paisagem</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="pages">Páginas:</label>
+            <input type="number" id="pages" value="20" min="20">
+        </div>
+        
+        <button type="submit">Criar Template</button>
+    </form>
+    
+    <div id="result"></div>
+
+    <script>
+        async function getToken() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Fazendo login...';
+            resultDiv.className = '';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@editorprodutos.com',
+                        password: 'password'
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('token').value = data.token;
+                    localStorage.setItem('accessToken', data.token);
+                    resultDiv.className = 'success';
+                    resultDiv.textContent = '✅ Token obtido com sucesso!';
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.textContent = `❌ Erro ao obter token: ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = `❌ Erro: ${error.message}`;
+            }
+        }
+        
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = document.getElementById('token').value || localStorage.getItem('accessToken');
+            const name = document.getElementById('name').value;
+            const productType = document.getElementById('productType').value;
+            const description = document.getElementById('description').value;
+            const format = document.getElementById('format').value;
+            const pages = parseInt(document.getElementById('pages').value);
+            const resultDiv = document.getElementById('result');
+            
+            if (!token) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = '❌ Token não encontrado. Clique em "Obter Token" primeiro.';
+                return;
+            }
+            
+            resultDiv.textContent = 'Criando template...';
+            resultDiv.className = '';
+            
+            const templateData = {
+                name,
+                description,
+                productType,
+                templateType: 'custom',
+                category: 'user-created',
+                config: {
+                    format,
+                    pages,
+                    coverType: 'dura',
+                    margin: 10,
+                    spine: 5
+                },
+                tags: ['teste']
+            };
+            
+            try {
+                console.log('Enviando requisição...');
+                console.log('Token:', token.substring(0, 20) + '...');
+                console.log('Dados:', templateData);
+                
+                const response = await fetch('/api/templates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(templateData),
+                });
+                
+                console.log('Status:', response.status);
+                
+                const data = await response.json();
+                console.log('Resposta:', data);
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.textContent = `✅ Template criado com sucesso!\n\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.textContent = `❌ Erro ao criar template (${response.status})\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                resultDiv.className = 'error';
+                resultDiv.textContent = `❌ Erro na requisição:\n\n${error.message}`;
+            }
+        });
+        
+        // Tentar carregar token do localStorage ao carregar a página
+        window.addEventListener('load', () => {
+            const savedToken = localStorage.getItem('accessToken');
+            if (savedToken) {
+                document.getElementById('token').value = savedToken;
+            }
+        });
+    </script>
+</body>
+</html>

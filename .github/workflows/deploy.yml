@@ -1,0 +1,115 @@
+# ============================================
+# Deploy Pipeline - Produção
+# Executa em push para main
+# ============================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Permite deploy manual
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==========================================
+  # Build e Test
+  # ==========================================
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Backend
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Backend Dependencies
+        working-directory: ./Editor/backend
+        run: npm ci
+
+      - name: Test Backend
+        working-directory: ./Editor/backend
+        run: npm test -- --passWithNoTests
+
+      - name: Build Backend
+        working-directory: ./Editor/backend
+        run: |
+          npx prisma generate
+          npm run build
+
+      # Frontend
+      - name: Install Frontend Dependencies
+        working-directory: ./Editor/frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: ./Editor/frontend
+        run: npm run build
+        env:
+          VITE_API_URL: /api
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+
+  # ==========================================
+  # Deploy para Servidor
+  # ==========================================
+  deploy:
+    name: Deploy to Server
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            cd /opt/editor
+            
+            # Pull latest code
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Load environment variables
+            export $(cat deploy/.env | xargs)
+            
+            # Run deploy script
+            chmod +x deploy/scripts/deploy.sh
+            ./deploy/scripts/deploy.sh
+          ENDSSH
+
+      - name: Health Check
+        run: |
+          sleep 30
+          curl -f https://${{ secrets.SERVER_HOST }}/health || exit 1
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Deploy successful!"
+          # Adicione aqui notificação para Slack/Discord se desejar
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Deploy failed!"
+          # Adicione aqui notificação para Slack/Discord se desejar

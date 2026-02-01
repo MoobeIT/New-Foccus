@@ -1,0 +1,48 @@
+# Exemplo de configuração para produção (Kubernetes)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: editor-config
+data:
+  NODE_ENV: "production"
+  USE_LOCAL_STORAGE: "false"
+  USE_MEMORY_QUEUE: "false"
+  USE_MEMORY_CACHE: "false"
+  USE_MOCK_RENDER: "false"
+  
+  # Produção usa serviços gerenciados
+  DATABASE_URL: "postgresql://user:pass@rds-endpoint:5432/editor_prod"
+  REDIS_URL: "redis://elasticache-endpoint:6379"
+  RABBITMQ_URL: "amqp://user:pass@rabbitmq-service:5672"
+  S3_ENDPOINT: "https://s3.amazonaws.com"
+  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: editor-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: editor-backend
+  template:
+    metadata:
+      labels:
+        app: editor-backend
+    spec:
+      containers:
+      - name: backend
+        image: editor/backend:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: editor-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

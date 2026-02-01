@@ -1,0 +1,171 @@
+module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: 'tsconfig.json',
+    tsconfigRootDir: __dirname,
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint/eslint-plugin'],
+  extends: [
+    'eslint:recommended',
+    '@typescript-eslint/recommended',
+    '@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:@typescript-eslint/strict',
+    'prettier',
+  ],
+  root: true,
+  env: {
+    node: true,
+    jest: true,
+  },
+  ignorePatterns: ['.eslintrc.js', 'dist/', 'node_modules/', 'coverage/', '*.js'],
+  rules: {
+    // TypeScript specific rules
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'error',
+    '@typescript-eslint/explicit-module-boundary-types': 'error',
+    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/prefer-readonly': 'error',
+    '@typescript-eslint/prefer-readonly-parameter-types': 'off', // Too strict for NestJS
+    '@typescript-eslint/strict-boolean-expressions': 'error',
+    '@typescript-eslint/prefer-nullish-coalescing': 'error',
+    '@typescript-eslint/prefer-optional-chain': 'error',
+    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/await-thenable': 'error',
+    '@typescript-eslint/no-misused-promises': 'error',
+    '@typescript-eslint/require-await': 'error',
+    '@typescript-eslint/return-await': 'error',
+    '@typescript-eslint/prefer-as-const': 'error',
+    '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+    '@typescript-eslint/no-non-null-assertion': 'error',
+    '@typescript-eslint/switch-exhaustiveness-check': 'error',
+
+    // General code quality rules
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-debugger': 'error',
+    'no-alert': 'error',
+    'no-eval': 'error',
+    'no-implied-eval': 'error',
+    'no-new-func': 'error',
+    'no-script-url': 'error',
+    'no-sequences': 'error',
+    'no-void': 'error',
+    'no-with': 'error',
+    'prefer-const': 'error',
+    'no-var': 'error',
+    'object-shorthand': 'error',
+    'prefer-arrow-callback': 'error',
+    'prefer-template': 'error',
+    'prefer-spread': 'error',
+    'prefer-rest-params': 'error',
+    'prefer-destructuring': ['error', { object: true, array: false }],
+
+    // Code style rules
+    'curly': ['error', 'all'],
+    'brace-style': ['error', '1tbs', { allowSingleLine: false }],
+    'comma-dangle': ['error', 'always-multiline'],
+    'quotes': ['error', 'single', { avoidEscape: true }],
+    'semi': ['error', 'always'],
+    'indent': 'off', // Handled by Prettier
+    'max-len': ['error', { code: 120, ignoreUrls: true, ignoreStrings: true }],
+    'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
+    'max-lines-per-function': ['error', { max: 100, skipBlankLines: true, skipComments: true }],
+    'complexity': ['error', 10],
+    'max-depth': ['error', 4],
+    'max-nested-callbacks': ['error', 3],
+    'max-params': ['error', 5],
+
+    // Import rules
+    'sort-imports': ['error', {
+      ignoreCase: false,
+      ignoreDeclarationSort: true,
+      ignoreMemberSort: false,
+      memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+    }],
+
+    // Security rules
+    'no-new-require': 'error',
+    'no-path-concat': 'error',
+
+    // Performance rules
+    'no-loop-func': 'error',
+    'no-extend-native': 'error',
+
+    // Error prevention rules
+    'no-duplicate-imports': 'error',
+    'no-self-compare': 'error',
+    'no-template-curly-in-string': 'error',
+    'no-unmodified-loop-condition': 'error',
+    'no-unreachable-loop': 'error',
+    'no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
+    'require-atomic-updates': 'error',
+
+    // Best practices
+    'array-callback-return': 'error',
+    'consistent-return': 'error',
+    'default-case': 'error',
+    'default-case-last': 'error',
+    'dot-notation': 'error',
+    'eqeqeq': ['error', 'always'],
+    'guard-for-in': 'error',
+    'no-caller': 'error',
+    'no-constructor-return': 'error',
+    'no-else-return': 'error',
+    'no-empty-function': 'error',
+    'no-eq-null': 'error',
+    'no-extra-bind': 'error',
+    'no-extra-label': 'error',
+    'no-implicit-coercion': 'error',
+    'no-implicit-globals': 'error',
+    'no-iterator': 'error',
+    'no-labels': 'error',
+    'no-lone-blocks': 'error',
+    'no-magic-numbers': ['error', { 
+      ignore: [-1, 0, 1, 2, 100, 200, 201, 400, 401, 403, 404, 500],
+      ignoreArrayIndexes: true,
+      ignoreDefaultValues: true,
+    }],
+    'no-multi-assign': 'error',
+    'no-new': 'error',
+    'no-new-wrappers': 'error',
+    'no-octal-escape': 'error',
+    'no-param-reassign': 'error',
+    'no-proto': 'error',
+    'no-return-assign': 'error',
+    'no-return-await': 'off', // Handled by @typescript-eslint/return-await
+    'no-throw-literal': 'error',
+    'no-unneeded-ternary': 'error',
+    'no-unused-expressions': 'error',
+    'no-useless-call': 'error',
+    'no-useless-concat': 'error',
+    'no-useless-return': 'error',
+    'prefer-promise-reject-errors': 'error',
+    'radix': 'error',
+    'yoda': 'error',
+  },
+  overrides: [
+    {
+      files: ['*.spec.ts', '*.test.ts', '*.integration.spec.ts'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-non-null-assertion': 'off',
+        'no-magic-numbers': 'off',
+        'max-lines-per-function': 'off',
+        'max-lines': 'off',
+      },
+    },
+    {
+      files: ['*.module.ts'],
+      rules: {
+        'max-lines': 'off',
+      },
+    },
+    {
+      files: ['main.ts'],
+      rules: {
+        'no-console': 'off',
+      },
+    },
+  ],
+};

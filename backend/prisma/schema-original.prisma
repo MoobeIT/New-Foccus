@@ -1,0 +1,379 @@
+// Prisma schema baseado no design aprovado
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Tenants (multi-tenancy)
+model Tenant {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique
+  themeConfig  Json     @default("{}")
+  settings     Json     @default("{}")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  users              User[]
+  products           Product[]
+  templates          Template[]
+  templateCategories TemplateCategory[]
+  assets             Asset[]
+  projects           Project[]
+  orders             Order[]
+  events             Event[]
+
+  @@map("tenants")
+}
+
+// Usuários
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  email         String    @unique
+  passwordHash  String?
+  name          String?
+  phone         String?
+  role          String    @default("customer")
+  emailVerified Boolean   @default(false)
+  active        Boolean   @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relacionamentos
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets           Asset[]
+  projects         Project[]
+  orders           Order[]
+  events           Event[]
+  consents         UserConsent[]
+  templateVersions TemplateVersion[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// Produtos
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  name        String
+  type        String   // 'photobook', 'calendar', 'frame', 'gift'
+  description String?
+  specs       Json     @default("{}")
+  rules       Json     @default("{}")
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variants   ProductVariant[]
+  projects   Project[]
+  orderItems OrderItem[]
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([active])
+  @@map("products")
+}
+
+// Variantes de Produto
+model ProductVariant {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  name      String
+  sku       String?
+  sizeMm    Json     // {width: 300, height: 300}
+  paper     String?
+  finish    String?
+  minPages  Int      @default(1)
+  maxPages  Int      @default(100)
+  basePrice Decimal  @default(0) @db.Decimal(10, 2)
+  priceRules Json    @default("{}")
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  projects   Project[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@index([sku])
+  @@index([active])
+  @@map("product_variants")
+}
+
+// Templates
+model Template {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  productType String
+  categoryId  String?  @db.Uuid
+  name        String
+  description String?
+  layoutJson  Json     @default("{}")
+  previewUrl  String?
+  version     Int      @default(1)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category  TemplateCategory? @relation(fields: [categoryId], references: [id])
+  versions  TemplateVersion[]
+
+  @@index([tenantId])
+  @@index([productType])
+  @@index([categoryId])
+  @@index([active])
+  @@map("templates")
+}
+
+// Categorias de Templates
+model TemplateCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  name        String
+  slug        String
+  description String?
+  parentId    String?  @db.Uuid
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent    TemplateCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  TemplateCategory[] @relation("CategoryHierarchy")
+  templates Template[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([active])
+  @@map("template_categories")
+}
+
+// Versões de Templates
+model TemplateVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  templateId String   @db.Uuid
+  version    Int
+  layoutJson Json
+  changelog  String?
+  createdBy  String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  // Relacionamentos
+  template      Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdByUser User     @relation(fields: [createdBy], references: [id])
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([createdBy])
+  @@map("template_versions")
+}
+
+// Assets (fotos/imagens)
+model Asset {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  tenantId         String   @db.Uuid
+  storageKey       String
+  filename         String
+  mimeType         String
+  sizeBytes        BigInt
+  width            Int?
+  height           Int?
+  dpi              Int?
+  exifData         Json     @default("{}")
+  faces            Json     @default("[]")
+  phash            String?
+  thumbnailUrls    Json     @default("{}")
+  processingStatus String   @default("pending") // 'pending', 'processing', 'completed', 'failed'
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relacionamentos
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([phash])
+  @@index([processingStatus])
+  @@map("assets")
+}
+
+// Projetos
+model Project {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  tenantId      String   @db.Uuid
+  productId     String?  @db.Uuid
+  variantId     String?  @db.Uuid
+  name          String
+  status        String   @default("draft") // 'draft', 'completed', 'archived'
+  pages         Json     @default("[]")
+  settings      Json     @default("{}")
+  priceSnapshot Json     @default("{}")
+  version       Int      @default(1)
+  shared        Boolean  @default(false)
+  shareToken    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relacionamentos
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product?        @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([shareToken])
+  @@map("projects")
+}
+
+// Pedidos
+model Order {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String?  @db.Uuid
+  tenantId      String   @db.Uuid
+  orderNumber   String   @unique
+  status        String   @default("draft") // 'draft', 'pending_payment', 'paid', 'in_production', 'shipped', 'delivered', 'cancelled'
+  totalAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  currency      String   @default("BRL")
+  shippingData  Json     @default("{}")
+  billingData   Json     @default("{}")
+  paymentRef    String?
+  paymentMethod String?
+  paymentStatus String   @default("pending")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relacionamentos
+  user  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([paymentRef])
+  @@map("orders")
+}
+
+// Itens do Pedido
+model OrderItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @db.Uuid
+  projectId       String?  @db.Uuid
+  productId       String?  @db.Uuid
+  variantId       String?  @db.Uuid
+  quantity        Int      @default(1)
+  unitPrice       Decimal  @db.Decimal(10, 2)
+  totalPrice      Decimal  @db.Decimal(10, 2)
+  productionSpecs Json     @default("{}")
+  createdAt       DateTime @default(now())
+
+  // Relacionamentos
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  project Project?        @relation(fields: [projectId], references: [id])
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@index([projectId])
+  @@map("order_items")
+}
+
+// Jobs de Processamento
+model Job {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String    // 'render_preview', 'render_final', 'preflight', 'asset_processing'
+  entityType  String?
+  entityId    String?   @db.Uuid
+  status      String    @default("pending") // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  priority    Int       @default(0)
+  payload     Json      @default("{}")
+  result      Json      @default("{}")
+  errorMessage String?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([type])
+  @@index([status])
+  @@index([entityType, entityId])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+// Eventos/Auditoria
+model Event {
+  id         String   @id @default(uuid()) @db.Uuid
+  entityType String
+  entityId   String   @db.Uuid
+  eventType  String
+  userId     String?  @db.Uuid
+  tenantId   String   @db.Uuid
+  payload    Json     @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  // Relacionamentos
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([eventType])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("events")
+}
+
+// Consentimentos LGPD
+model UserConsent {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  consentType String   // 'data_processing', 'marketing', 'cookies'
+  granted     Boolean
+  version     String   @default("1.0")
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([consentType])
+  @@index([createdAt])
+  @@map("user_consents")
+}

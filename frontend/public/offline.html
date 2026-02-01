@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Offline - Sem Conexão</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .offline-container {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .offline-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            background: #f8fafc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .offline-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1a202c;
+        }
+
+        .offline-message {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .offline-features {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .offline-features h3 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .offline-features ul {
+            list-style: none;
+        }
+
+        .offline-features li {
+            padding: 0.5rem 0;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+        }
+
+        .offline-features li::before {
+            content: "✓";
+            color: #48bb78;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        .retry-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 1rem;
+        }
+
+        .retry-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .retry-button:active {
+            transform: translateY(0);
+        }
+
+        .connection-status {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .connection-status.offline {
+            background: #fed7d7;
+            color: #c53030;
+            border: 1px solid #feb2b2;
+        }
+
+        .connection-status.online {
+            background: #c6f6d5;
+            color: #2f855a;
+            border: 1px solid #9ae6b4;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .retry-button.loading .loading-spinner {
+            display: inline-block;
+        }
+
+        @media (max-width: 600px) {
+            .offline-container {
+                padding: 2rem;
+                margin: 1rem;
+            }
+
+            .offline-title {
+                font-size: 1.5rem;
+            }
+
+            .offline-icon {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            📱
+        </div>
+        
+        <h1 class="offline-title">Você está offline</h1>
+        
+        <p class="offline-message">
+            Não se preocupe! O Editor continua funcionando mesmo sem conexão com a internet.
+        </p>
+
+        <div class="offline-features">
+            <h3>O que você pode fazer offline:</h3>
+            <ul>
+                <li>Continuar editando seus projetos</li>
+                <li>Criar novos designs</li>
+                <li>Usar imagens já carregadas</li>
+                <li>Salvar automaticamente seu trabalho</li>
+                <li>Acessar templates em cache</li>
+            </ul>
+        </div>
+
+        <p style="color: #718096; font-size: 0.9rem; margin-bottom: 1rem;">
+            Seus dados serão sincronizados automaticamente quando a conexão for restaurada.
+        </p>
+
+        <button class="retry-button" onclick="checkConnection()">
+            <span class="loading-spinner"></span>
+            <span class="button-text">Tentar Novamente</span>
+        </button>
+
+        <div class="connection-status offline" id="connectionStatus">
+            <strong>Status:</strong> Sem conexão com a internet
+        </div>
+    </div>
+
+    <script>
+        let isChecking = false;
+
+        function updateConnectionStatus() {
+            const statusElement = document.getElementById('connectionStatus');
+            const button = document.querySelector('.retry-button');
+            
+            if (navigator.onLine) {
+                statusElement.className = 'connection-status online';
+                statusElement.innerHTML = '<strong>Status:</strong> Conectado! Redirecionando...';
+                
+                // Redirecionar para a página principal
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                statusElement.className = 'connection-status offline';
+                statusElement.innerHTML = '<strong>Status:</strong> Sem conexão com a internet';
+            }
+        }
+
+        function checkConnection() {
+            if (isChecking) return;
+            
+            isChecking = true;
+            const button = document.querySelector('.retry-button');
+            const buttonText = button.querySelector('.button-text');
+            
+            button.classList.add('loading');
+            buttonText.textContent = 'Verificando...';
+            
+            // Tentar fazer uma requisição para verificar conectividade real
+            fetch('/api/health', { 
+                method: 'HEAD',
+                cache: 'no-cache',
+                mode: 'no-cors'
+            })
+            .then(() => {
+                // Conexão restaurada
+                updateConnectionStatus();
+            })
+            .catch(() => {
+                // Ainda offline
+                setTimeout(() => {
+                    button.classList.remove('loading');
+                    buttonText.textContent = 'Tentar Novamente';
+                    isChecking = false;
+                    updateConnectionStatus();
+                }, 2000);
+            });
+        }
+
+        // Monitorar mudanças na conectividade
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // Verificar status inicial
+        updateConnectionStatus();
+
+        // Verificar conectividade periodicamente
+        setInterval(() => {
+            if (!isChecking && navigator.onLine) {
+                checkConnection();
+            }
+        }, 30000); // A cada 30 segundos
+
+        // Adicionar suporte a teclado
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                checkConnection();
+            }
+        });
+
+        // Adicionar animação de entrada
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.querySelector('.offline-container');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
+</body>
+</html>
