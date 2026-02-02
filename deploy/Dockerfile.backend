@@ -26,7 +26,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Remover devDependencies
-RUN npm prune --production
+RUN npm prune --production --legacy-peer-deps || true
 
 # ============================================
 # Stage 2: Production
